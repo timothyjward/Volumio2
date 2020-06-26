@@ -12,6 +12,9 @@ var parser = require('cue-parser');
 var mm = require('music-metadata');
 var os = require('os');
 var execSync = require('child_process').execSync;
+var path = require('path');
+
+
 var ignoreupdate = false;
 // tracknumbers variable below adds track numbers to titles if set to true. Set to false for normal behavour.
 var tracknumbers = false;
@@ -34,6 +37,7 @@ function ControllerMpd (context) {
   this.configManager = this.context.configManager;
   this.config = new (require('v-conf'))();
   this.registeredCallbacks = [];
+  this.fileAgentInterface = new (require('./fileAgentInterface.js'))(this.context);
 }
 
 // Public Methods ---------------------------------------------------------------------------------------
@@ -2829,6 +2833,10 @@ ControllerMpd.prototype.handleBrowseUri = function (curUri, previous) {
   var self = this;
   var response;
 
+  return this.fileAgentInterface.handleBrowseUri(curUri);
+
+  /*
+
   self.logger.info('CURURI: ' + curUri);
   var splitted = curUri.split('/');
 
@@ -2890,6 +2898,7 @@ ControllerMpd.prototype.handleBrowseUri = function (curUri, previous) {
   }
 
   return response;
+  */
 };
 
 /**
