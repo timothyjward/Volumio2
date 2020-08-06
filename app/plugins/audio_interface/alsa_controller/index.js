@@ -493,7 +493,7 @@ ControllerAlsa.prototype.saveDSPOptions = function (data) {
       execSync('/usr/bin/amixer -c ' + value + ' set "' + dspname + '" "' + dspvalue + '"', {uid: 1000, gid: 1000, encoding: 'utf8'});
       self.logger.info('Successfully set DSP ' + dspname + ' with value ' + dspvalue + ' for card ' + value);
     } catch (e) {
-      self.logger.info('ERROR Cannot set DSP ' + dspname + ' for card ' + value + ': ' + error);
+      self.logger.info('ERROR Cannot set DSP ' + dspname + ' for card ' + value + ': ' + e);
     }
   }
 
@@ -682,7 +682,7 @@ ControllerAlsa.prototype.saveAlsaOptions = function (data) {
   if(self.config.get('softvolume')) {
 	  promise = self.writeSoftMixerFile(OutputDeviceNumber);
   } else {
-	  promise = self.updateALSAConfigFile();
+	  promise = self.internalUpdateALSAConfigFile();
   }
 
   return promise.then((x) => {
@@ -792,6 +792,7 @@ ControllerAlsa.prototype.saveResamplingOpts = function (data) {
 };
 
 ControllerAlsa.prototype.outputDeviceCallback = function (value) {
+  var self = this;
   if(value != 'volumio') {
     self.log.warn('The ALSA output device has been set to ' + value +  ' when it should always be \'volumio\'')
   }
@@ -1246,7 +1247,7 @@ ControllerAlsa.prototype.writeSoftMixerFile = function (data) {
       self.logger.info('Cannot write Software Volume ALSA configuration: ' + err);
     } else {
       self.logger.info('Software Volume ALSA configuration written');
-      defer.resolve(self.updateALSAConfigFile());
+      defer.resolve(self.internalUpdateALSAConfigFile());
     }
   });
 
@@ -1334,7 +1335,7 @@ ControllerAlsa.prototype.disableSoftMixer = function () {
       self.logger.info('Cannot delete ' + folder + '/asound/softvolume-postVolume.conf: ' + err);
     } else {
       self.logger.info('Soft Volume ALSA configuration file deleted');
-      self.updateALSAConfigFile();
+      self.internalUpdateALSAConfigFile();
     }
   });
 };
@@ -1662,10 +1663,22 @@ ControllerAlsa.prototype.getAlsaCardsWithoutI2SDAC = function (data) {
     return cardsWithoutI2S;
 };
 
+// This function regeneratees the ALSA config file, and then
+// updates the shared alsa output to notify listeners that
+// they need to reload themselves
+ControllerAlsa.prototype.updateALSAConfigFile = function () {
+	var self = this;
+	return self.internalUpdateALSAConfigFile()
+	  .then((x) => {
+		    self.commandRouter.sharedVars.set('alsa.outputdevice', 'volumio');
+		    return x;
+		  });
+};
+
 // This function regeneratees the ALSA config file, including
 // any contributions from enabled plugins. The main input is 
 // always 'volumio' and the final output 'volumioOutput'
-ControllerAlsa.prototype.updateALSAConfigFile = function () {
+ControllerAlsa.prototype.internalUpdateALSAConfigFile = function () {
   var self = this;
 
   self.logger.info('Preparing to generate the ALSA configuration file');
